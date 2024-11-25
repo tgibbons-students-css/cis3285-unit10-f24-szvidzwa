@@ -1,8 +1,7 @@
 ﻿using SingleResponsibilityPrinciple.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -10,9 +9,9 @@ namespace SingleResponsibilityPrinciple
 {
     public class RestfulTradeDataProvider : ITradeDataProvider
     {
-        string url;
-        ILogger logger;
-        HttpClient client = new HttpClient();
+        private readonly string url;
+        private readonly ILogger logger;
+        private readonly HttpClient client = new HttpClient();
 
         public RestfulTradeDataProvider(string url, ILogger logger)
         {
@@ -20,29 +19,39 @@ namespace SingleResponsibilityPrinciple
             this.logger = logger;
         }
 
-        async Task<List<string>> GetTradeAsync()
+        private async Task<List<string>> GetTradeAsync()
         {
             logger.LogInfo("Connecting to the Restful server using HTTP");
-            List<string> tradesString = null;
-
-            HttpResponseMessage response = await client.GetAsync(url);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                // Read the content as a string and deserialize it into a List<string>
-                string content = await response.Content.ReadAsStringAsync();
-                tradesString = JsonSerializer.Deserialize<List<string>>(content);
-                logger.LogInfo("Received trade strings of length = " + tradesString.Count);
+                HttpResponseMessage response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    // Read and deserialize the response content
+                    string content = await response.Content.ReadAsStringAsync();
+                    var tradesString = JsonSerializer.Deserialize<List<string>>(content);
+                    logger.LogInfo("Received trade strings of length = " + tradesString.Count);
+                    return tradesString;
+                }
+                else
+                {
+                    logger.LogError("Failed to retrieve data. HTTP Status: " + response.StatusCode);
+                }
             }
-            return tradesString;
+            catch (Exception ex)
+            {
+                logger.LogError($"Error fetching trades: {ex.Message}");
+            }
+
+            return null; // Return null if an error occurred or the response wasn't successful
         }
 
-        public IEnumerable<string> GetTradeData()
+        public async Task<IEnumerable<string>> GetTradeDataAsync()
         {
-            Task<List<string>> task = Task.Run(() => GetTradeAsync());
-            task.Wait();
+            var tradeList = await GetTradeAsync();
 
-            List<string> tradeList = task.Result;
-            return tradeList;
+            // Return the result if it's not null; otherwise, return an empty list
+            return tradeList ?? new List<string>();
         }
     }
 }

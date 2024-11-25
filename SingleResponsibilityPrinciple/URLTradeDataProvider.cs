@@ -1,25 +1,26 @@
 ﻿using SingleResponsibilityPrinciple.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace SingleResponsibilityPrinciple
 {
     public class URLTradeDataProvider : ITradeDataProvider
     {
-        string url;
-        ILogger logger;
+        private readonly string url;
+        private readonly ILogger logger;
+
         public URLTradeDataProvider(string url, ILogger logger)
         {
             this.url = url;
             this.logger = logger;
         }
 
-        public IEnumerable<string> GetTradeData()
+        public Task<IEnumerable<string>> GetTradeDataAsync()
         {
-            List<string> tradeData = new List<string>();
+            var tradeData = new List<string>();
             logger.LogInfo("Reading trades from URL: " + url);
 
             using (HttpClient client = new HttpClient())
@@ -41,7 +42,9 @@ namespace SingleResponsibilityPrinciple
                     }
                 }
             }
-            return tradeData;
+
+            // Wrap the result in a Task using Task.FromResult
+            return Task.FromResult((IEnumerable<string>)tradeData);
         }
     }
 }

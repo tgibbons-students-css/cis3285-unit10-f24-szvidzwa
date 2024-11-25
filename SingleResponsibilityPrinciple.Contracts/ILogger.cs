@@ -5,5 +5,6 @@
         void LogWarning(string message, params object[] args);
 
         void LogInfo(string message, params object[] args);
+        void LogError(string v);
     }
 }
